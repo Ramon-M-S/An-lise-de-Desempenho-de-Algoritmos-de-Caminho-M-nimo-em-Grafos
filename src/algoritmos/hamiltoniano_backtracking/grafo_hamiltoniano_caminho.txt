@@ -1,0 +1,7 @@
+# Grafo com caminho Hamiltoniano (sem circuito)
+A B 1
+B A 1
+B C 1
+C B 1
+C D 1
+D C 1

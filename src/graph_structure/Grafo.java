@@ -1,203 +1,112 @@
 package graph_structure;
 
+
+import util.hashSet.HashSet;
 import util.lista.ListaEncadeada;
+import util.tabelaHash.TabelaHash;
 
-/**
- * Classe que representa um Grafo com vértices e arestas.
- * Suporta grafos direcionados e não direcionados.
- *
- * @param <E> Tipo dos dados armazenados nos vértices.
- */
-public class Grafo<E> {
+public class Grafo<V> {
 
-    private final ListaEncadeada<Vertice<E>> vertices; // Lista de vértices do grafo
-    private final ListaEncadeada<Aresta<E>> arestas;   // Lista de arestas do grafo
+    public static record Aresta<V>(V origem, V destino, double peso) {}
+    public static record Vizinho<V>(V no, double peso) {}
 
-    /**
-     * Construtor da classe Grafo, inicializa as listas de vértices e arestas.
-     */
-    public Grafo() {
-        this.vertices = new ListaEncadeada<>();
+    private final TabelaHash<V, ListaEncadeada<Vizinho<V>>> adjacencias;
+    private final HashSet<V> vertices;
+    private final ListaEncadeada<Aresta<V>> arestas;
+    private final boolean direcionado;
+
+    public Grafo(boolean direcionado) {
+        this.direcionado = direcionado;
+        this.adjacencias = new TabelaHash<>();
+        this.vertices = new HashSet<>();
         this.arestas = new ListaEncadeada<>();
     }
 
-    /**
-     * Adiciona um vértice ao grafo.
-     *
-     * @param dado O dado que será armazenado no vértice.
-     */
-    public void addVertice(E dado) {
-        Vertice<E> novoVertice = new Vertice<>(dado);
-        this.vertices.add(novoVertice);
-    }
-
-    /**
-     * Adiciona uma aresta ao grafo.
-     *
-     * @param peso        Peso da aresta.
-     * @param dadoInicio  Vértice de origem.
-     * @param dadoFim     Vértice de destino.
-     * @param direcionado Indica se a aresta é direcionada (true) ou não (false).
-     */
-    public void addAresta(Double peso, E dadoInicio, E dadoFim, boolean direcionado) {
-        Vertice<E> inicio = this.getVertice(dadoInicio);
-        Vertice<E> fim = this.getVertice(dadoFim);
-
-        // Se algum dos vértices não existir, a aresta não será criada
-        if (inicio == null || fim == null) return;
-
-        // Cria a aresta normal (de início para fim)
-        Aresta<E> aresta = new Aresta<>(peso, inicio, fim);
-        inicio.adicionaArestaSaida(aresta);
-        fim.adicionaArestaEntrada(aresta);
-        this.arestas.add(aresta);
-
-        // Se o grafo não for direcionado, adiciona também a aresta reversa (de fim para início)
-        if (!direcionado) {
-            Aresta<E> arestaReversa = new Aresta<>(peso, fim, inicio);
-            fim.adicionaArestaSaida(arestaReversa);
-            inicio.adicionaArestaEntrada(arestaReversa);
-            this.arestas.add(arestaReversa);
+    public void adicionarVertice(V vertice) {
+        if (!vertices.contains(vertice)) {
+            vertices.add(vertice);
+            adjacencias.put(vertice, new ListaEncadeada<>());
         }
     }
 
-    /**
-     * Busca um vértice no grafo a partir do dado informado.
-     *
-     * @param dado O dado do vértice a ser buscado.
-     * @return O vértice encontrado ou null se não existir.
-     */
-    public Vertice<E> getVertice(E dado) {
-        for (int i = 0; i < vertices.size(); i++) {
-            Vertice<E> vertice = vertices.get(i);
-            if (vertice.getDado().equals(dado)) {
-                return vertice;
+    public void adicionarAresta(V origem, V destino) {
+        adicionarAresta(origem, destino, 1.0);
+    }
+
+    public void adicionarAresta(V origem, V destino, double peso) {
+        // 1. Garante que os vértices existem no grafo.
+        adicionarVertice(origem);
+        adicionarVertice(destino);
+
+        // 2. Adiciona a aresta (origem -> destino) apenas se ela ainda não existir.
+        Vizinho<V> vizinhoFrente = new Vizinho<>(destino, peso);
+        if (!adjacencias.get(origem).contains(vizinhoFrente)) {
+            adjacencias.get(origem).add(vizinhoFrente);
+        }
+
+        // A lista global de arestas pode conter duplicatas se o arquivo de origem as tiver.
+        // Isso é geralmente aceitável e não afeta os algoritmos de travessia.
+        arestas.add(new Aresta<>(origem, destino, peso));
+
+        // 3. Se o grafo não for direcionado, adiciona a aresta de volta (destino -> origem)
+        //    apenas se ela também não existir.
+        if (!this.direcionado) {
+            Vizinho<V> vizinhoTras = new Vizinho<>(origem, peso);
+            if (!adjacencias.get(destino).contains(vizinhoTras)) {
+                adjacencias.get(destino).add(vizinhoTras);
             }
         }
-        return null; // Vértice não encontrado
     }
 
-    /**
-     * Remove um vértice do grafo, junto com todas as suas arestas.
-     *
-     * @param dado O dado do vértice a ser removido.
-     */
-    public void removerVertice(E dado) {
-        Vertice<E> verticeRemover = getVertice(dado);
-        if (verticeRemover != null) {
-            removerArestasDoVertice(verticeRemover);
-            vertices.remove(verticeRemover);
-            System.out.println("Vértice " + dado + " removido.");
-        } else {
-            System.out.println("Vértice não encontrado: " + dado);
-        }
+    public HashSet<V> getVertices() {
+        return this.vertices;
     }
 
-    /**
-     * Remove todas as arestas conectadas a um vértice.
-     *
-     * @param vertice O vértice cujas arestas serão removidas.
-     */
-    private void removerArestasDoVertice(Vertice<E> vertice) {
-        // Remove as arestas de entrada
-        for (int i = 0; i < vertice.getArestaEntrada().size(); i++) {
-            Aresta<E> entrada = vertice.getArestaEntrada().get(i);
-            entrada.getInicio().getArestaSaida().remove(entrada);
-            this.arestas.remove(entrada);
-        }
-
-        // Remove as arestas de saída
-        for (int i = 0; i < vertice.getArestaSaida().size(); i++) {
-            Aresta<E> saida = vertice.getArestaSaida().get(i);
-            saida.getFim().getArestaEntrada().remove(saida);
-            this.arestas.remove(saida);
-        }
+    public ListaEncadeada<Aresta<V>> getArestas() {
+        return this.arestas;
     }
 
-    /**
-     * Remove uma aresta específica entre dois vértices.
-     *
-     * @param dadoInicio Vértice de origem.
-     * @param dadoFim    Vértice de destino.
-     */
-    public void removerAresta(E dadoInicio, E dadoFim) {
-        Vertice<E> inicio = getVertice(dadoInicio);
-        Vertice<E> fim = getVertice(dadoFim);
+    public ListaEncadeada<Vizinho<V>> getVizinhos(V vertice) {
+        ListaEncadeada<Vizinho<V>> vizinhos = adjacencias.get(vertice);
+        if (vizinhos == null) return new ListaEncadeada<>();
+        return vizinhos;
+    }
 
-        if (inicio != null && fim != null) {
-            for (int i = 0; i < arestas.size(); i++) {
-                Aresta<E> aresta = arestas.get(i);
-                if (aresta.getInicio().equals(inicio) && aresta.getFim().equals(fim)) {
-                    inicio.getArestaSaida().remove(aresta);
-                    fim.getArestaEntrada().remove(aresta);
-                    this.arestas.remove(aresta);
-                    return;
-                }
+    public int getNumeroDeVertices() {
+        return this.vertices.size();
+    }
+
+    public int getNumeroDeArestas() {
+        return this.arestas.size();
+    }
+
+    public boolean isDirecionado() {
+        return this.direcionado;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Grafo (Direcionado: ").append(direcionado).append(")\n");
+        sb.append("Vértices: ").append(getNumeroDeVertices()).append(", Arestas: ").append(getNumeroDeArestas()).append("\n");
+
+        ListaEncadeada<V> todasAsChaves = adjacencias.keySet();
+        ListaEncadeada<V>.MeuIteradorDeLista iteradorVertices = todasAsChaves.iterador();
+
+        while (iteradorVertices.temProximo()) {
+            V vertice = iteradorVertices.proximo();
+            sb.append(vertice).append(" -> ");
+            ListaEncadeada<Vizinho<V>> vizinhos = getVizinhos(vertice);
+            ListaEncadeada<Vizinho<V>>.MeuIteradorDeLista iteradorVizinhos = vizinhos.iterador();
+
+            while (iteradorVizinhos.temProximo()) {
+                Vizinho<V> vizinho = iteradorVizinhos.proximo();
+                sb.append(vizinho.no()).append(" (").append(vizinho.peso()).append(") ");
             }
-            System.out.println("Aresta não encontrada entre " + dadoInicio + " e " + dadoFim);
-        } else {
-            System.out.println("Vértices não encontrados.");
+            sb.append("\n");
         }
+
+        return sb.toString();
     }
 
-    /**
-     * Verifica se um vértice existe no grafo.
-     *
-     * @param dado O dado do vértice a ser pesquisado.
-     * @return true se o vértice existir, false caso contrário.
-     */
-    public boolean pesquisarVertice(E dado) {
-        return getVertice(dado) != null;
-    }
-
-    /**
-     * Verifica se existe uma aresta entre dois vértices.
-     *
-     * @param dadoInicio Vértice de origem.
-     * @param dadoFim    Vértice de destino.
-     * @return true se a aresta existir, false caso contrário.
-     */
-    public boolean pesquisarAresta(E dadoInicio, E dadoFim) {
-        Vertice<E> inicio = getVertice(dadoInicio);
-        Vertice<E> fim = getVertice(dadoFim);
-
-        if (inicio != null && fim != null) {
-            for (int i = 0; i < arestas.size(); i++) {
-                Aresta<E> aresta = arestas.get(i);
-                if (aresta.getInicio().equals(inicio) && aresta.getFim().equals(fim)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Imprime todos os vértices do grafo.
-     */
-    public void imprimirVertices() {
-        for (int i = 0; i < vertices.size(); i++) {
-            System.out.println(vertices.get(i).getDado());
-        }
-    }
-
-    /**
-     * Imprime os vértices adjacentes de cada vértice no grafo.
-     */
-    public void imprimirAdjacentes() {
-        for (int i = 0; i < vertices.size(); i++) {
-            Vertice<E> vertice = vertices.get(i);
-            System.out.print("Vértice " + vertice.getDado() + " -> Adjacentes: ");
-            ListaEncadeada<Aresta<E>> saidas = vertice.getArestaSaida();
-
-            if (saidas.size() == 0) {
-                System.out.print("Nenhum");
-            } else {
-                for (int j = 0; j < saidas.size(); j++) {
-                    System.out.print(saidas.get(j).getFim().getDado() + " ");
-                }
-            }
-            System.out.println();
-        }
-    }
 }

@@ -73,6 +73,24 @@ public class ListaEncadeada<E> implements Cloneable, Serializable {
         if (ultimo == null) throw new NoSuchElementException();
         return ultimo.item;
     }
+    /**
+     * Substitui o elemento na posição especificada nesta lista pelo elemento especificado.
+     *
+     * @param indice o índice do elemento a ser substituído.
+     * @param elemento o elemento a ser armazenado na posição especificada.
+     * @throws IndexOutOfBoundsException se o índice estiver fora do intervalo (indice < 0 || indice >= size()).
+     */
+    public void set(int indice, E elemento) {
+        // O método no(indice) já faz a checagem de limites (checarIndice),
+        // então não precisamos duplicar a verificação aqui.
+        No<E> noParaAtualizar = no(indice);
+
+        // Simplesmente atualiza o item do nó encontrado.
+        noParaAtualizar.item = elemento;
+
+        // Incrementa o modCount para manter a consistência com os iteradores (fail-fast).
+        modCount++;
+    }
 
     public E removeFirst() {
         if (primeiro == null) throw new NoSuchElementException();
@@ -326,5 +344,35 @@ public class ListaEncadeada<E> implements Cloneable, Serializable {
                 throw new IllegalStateException("Lista modificada durante iteração.");
             }
         }
+    }
+
+    /**
+     * Retorna uma representação em String da lista.
+     * A representação tem o formato "[elemento1, elemento2, ..., elementoN]".
+     *
+     * @return A String formatada representando a lista.
+     */
+    @Override
+    public String toString() {
+        // Se a lista estiver vazia (sem primeiro nó), retorna "[]"
+        if (this.primeiro == null) {
+            return "[]";
+        }
+
+        StringBuilder builder = new StringBuilder();
+        builder.append("[");
+
+        No<E> atual = this.primeiro;
+        while (atual != null) {
+            builder.append(atual.item);
+            // Se não for o último elemento, adiciona uma vírgula e um espaço
+            if (atual.proximo != null) {
+                builder.append(", ");
+            }
+            atual = atual.proximo;
+        }
+
+        builder.append("]");
+        return builder.toString();
     }
 }

@@ -1,0 +1,11 @@
+# Grafo Nao-Direcionado e Desconexo
+# Componente 1
+A B 1
+B A 1
+# Componente 2
+C D 1
+D C 1
+D E 1
+E D 1
+# Componente 3 (vértice isolado)
+F F 0
